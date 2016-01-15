@@ -310,7 +310,7 @@ void checkConditionalExpression(TokenPointer *tokenPointer, SymbolPointer headSy
 
     }
 
-    if (closedPars-openedPars ! = 1) messageError(*tokenPointer, "Didn't use \'(\' and \')\' correctly!");
+    if (closedPars-openedPars != 1) messageError(*tokenPointer, "Didn't use \'(\' and \')\' correctly!");
     *tokenPointer = (*tokenPointer)->nextPointer;
 
 }
