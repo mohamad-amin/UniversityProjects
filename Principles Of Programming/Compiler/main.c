@@ -113,8 +113,8 @@ int main() {
 
     tokenizer(&headToken, preprocessor());
     printList( headToken);
-  //  syntaxAnalyze(headToken->nextPointer, &headSymbol);
-//    generateIRCode(headToken->nextPointer, headSymbol);
+    syntaxAnalyze(headToken->nextPointer, &headSymbol);
+    generateIRCode(headToken->nextPointer, headSymbol);
 
     return 0;
 
