@@ -215,15 +215,21 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                     if (!isConditionStackEmpty(conditionTopPointer)) {
                         ConditionStackNode conditionNode = popFromConditionStack(&conditionTopPointer);
                         if (conditionNode.elseIndex == -1) {
-                            if (strcmp(currentToken->nextPointer->text, "else") == 0) {
-                                currentToken = currentToken->nextPointer;
-                                if (strcmp(currentToken->nextPointer->text, "{") == 0) {
+                            if (currentToken->nextPointer == NULL) {
+                                if (!isConditionStackEmpty(conditionTopPointer)) {
+                                    messageError(currentToken, "Main and some other scopes weren't closed with }");
+                                } else messageError(currentToken, "Main wasn't closed with }");
+                            } else {
+                                if (strcmp(currentToken->nextPointer->text, "else") == 0) {
                                     currentToken = currentToken->nextPointer;
-                                    pushToConditionStack(&conditionTopPointer, 0, 0, 0);
-                                } else {
-                                    unexpectedTokenException(currentToken, "Expected {");
-                                    skipToToken(&currentToken, "{");
-                                    hasError = 1 ;
+                                    if (strcmp(currentToken->nextPointer->text, "{") == 0) {
+                                        currentToken = currentToken->nextPointer;
+                                        pushToConditionStack(&conditionTopPointer, 0, 0, 0);
+                                    } else {
+                                        unexpectedTokenException(currentToken, "Expected {");
+                                        skipToToken(&currentToken, "{");
+                                        hasError = 1 ;
+                                    }
                                 }
                             } // Nothing Special Was done... !
                         } // Nothing Special Was done... !
