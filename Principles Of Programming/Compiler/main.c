@@ -108,12 +108,13 @@ int load(TokenPointer head, char a[]);
 
 int main() {
     
-    TokenPointer headToken = NULL;
+    TokenPointer headToken ;
     SymbolPointer headSymbol = NULL;
 
     tokenizer(&headToken, preprocessor());
-    syntaxAnalyze(headToken->nextPointer, &headSymbol);
-    generateIRCode(headToken->nextPointer, headSymbol);
+    printList( headToken);
+  //  syntaxAnalyze(headToken->nextPointer, &headSymbol);
+//    generateIRCode(headToken->nextPointer, headSymbol);
 
     return 0;
 
@@ -251,7 +252,7 @@ int preprocessor(void) {
     Token * head;
     int lineNumber = 0;
     head = (TokenPointer) malloc(sizeof (Token));
-    head->text = "";
+    head->text = " ";
     head->nextPointer = NULL;
     lineNumber = loadSecond(head);
     save(head);
@@ -262,7 +263,7 @@ void save(TokenPointer headToken){
     TokenPointer current;
     current = headToken->nextPointer;
     FILE *p;
-    p = fopen("/Users/sina/Desktop/tmp.c","w+");
+    p = fopen("/Users/sina/Desktop/salam/tmp.c","w+");
     if (p==NULL){
         printf("ERROR!\n");
         exit(1);
@@ -280,12 +281,20 @@ int load(Token* head, char a[]) {
     current = head;
     int counter = 1;
     char *str;
+    char c;
     FILE *s;
+    printf("%s\n", a);
+    //printf("here")
     s = fopen(a, "r");
     if (s == NULL) {
         printf(" ERROR!\n");
         exit(1);
     }
+       c = fgetc(s);
+       fseek(s , 0 , SEEK_SET);
+     if( c == EOF)
+        return -1 ;
+     else
     while (!feof(s)) {
         str = (char *) malloc(sizeof(char)*100);
         fgets(str, 100, s);
@@ -302,6 +311,7 @@ int load(Token* head, char a[]) {
     current->nextPointer = newToken;
     newToken->text = "\n";
     fclose(s);
+    printf("load counter is:%d\n", counter);
     return counter;
 }
 
@@ -312,7 +322,7 @@ int loadSecond(Token * head) {
     char a[100], b[100], c, abbas[100];
     int i = 0, j = 0, lineNumber = 0;
     FILE *p;
-    p = fopen("/Users/sina/Desktop/salam/salam/main.c", "r");
+    p = fopen("/Users/sina/Desktop/salam/first.c", "r");
     if (p == NULL) {
         printf("ERROR!\n");
         exit(1);
@@ -321,27 +331,31 @@ int loadSecond(Token * head) {
     if (c == '#') {
         fscanf(p, "%s", abbas);
         if (strcmp(abbas, "include") == 0) {
-            fscanf(p, "%s", abbas);
-            if (abbas[i] == '<') {
-                while (abbas[i] != '>' && abbas[i] != '\0') {
+            fscanf( p,"%s", abbas);
+            if (abbas[i] == '\"') {
+                while (abbas[i] != '\"' && abbas[i] != '\0') {
                     i++;
                 }
-                if (abbas[i] != '>') {
+                if (abbas[i] != '\"') {
                     printf("ERROR 1 :D\n");
                     exit(1);
                 } else {
                     fseek(p, 0, SEEK_SET);
                     fgets(a, 100, p);
                     i = 0;
-                    while (a[i] != '<')
+                    while (a[i] != '\"')
                         i++;
                     i++;
-                    while (a[i] != '>') {
+                    while (a[i] != '\"') {
                         b[j] = a[i];
                         i++;
                         j++;
                     }
                    lineNumber = load(head, b);
+                   if (lineNumber == -1){
+                       printf("HERE\n");
+                       lineNumber = 0;
+                   }
                     while (!feof(p)) {
                         current = head;
                         while (current->nextPointer != NULL)
@@ -380,10 +394,12 @@ int loadSecond(Token * head) {
     }
 
     fclose(p);
+    printf("load second lineNumber is: %d\n", lineNumber);
     return lineNumber ;
 }
 
 void tokenizer(TokenPointer *headToken , int lineNumber) {
+    printf("tokenizer linenumber is: %d\n", lineNumber);
     *headToken = (TokenPointer) malloc(sizeof(Token));
     loadToken(*headToken , lineNumber );
     return;
@@ -392,11 +408,11 @@ void tokenizer(TokenPointer *headToken , int lineNumber) {
 void loadToken(Token * head , int lineNumber) {
     Token * current, * newToken;
     char * str, * delim, *token, *newLine;
-    int counter = 2, lineNum;
+    int counter = 2 , lineNum;
     current = head;
     delim = " ";
     FILE * p;
-    p = fopen("/Users/sina/Desktop/tmp.c", "r");
+    p = fopen("/Users/sina/Desktop/salam/tmp.c", "r");
     if (p == NULL) {
         printf("ERROR!\n");
         exit(1);
@@ -409,6 +425,8 @@ void loadToken(Token * head , int lineNumber) {
             *newLine = '\0';
         }
         token = strtok(str, delim);
+        if ( token == NULL)
+            counter --;
         while (token != NULL) {
             newToken = (Token *) malloc(sizeof (Token));
             current->nextPointer = newToken;
