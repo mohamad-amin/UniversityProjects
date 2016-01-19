@@ -7,10 +7,10 @@ enum ScopeState {
     START, INSIDE_MAIN
 };
 enum State {
-    KEYWORD, ID, ASSIGN, IF_CONDITION, RETURN, NIY
+    KEYWORD, ID, ASSIGN, IF_CONDITION, WHILE_CONDITION, RETURN, NIY
 };
 enum Keyword {
-    INT, FLOAT, CHAR, BOOL, IF, ELSE, MAIN, VOID, NUL
+    INT, FLOAT, CHAR, BOOL, IF, ELSE, MAIN, VOID, NUL, WHILE
 };
 enum VariableKeyword {
     INTK, FLOATK, CHARK, BOOLK
@@ -21,7 +21,6 @@ struct Token {
     int lineNumber;
     struct Token *nextPointer;
 };
-
 
 struct StackNode {
     char data[35];
@@ -68,25 +67,19 @@ int isVariableKeyword(char*);
 int isValidIdentifier(char*);
 int isCharacterAssignment(char*);
 int isConditionalOperator(char*);
-TokenPointer createTokenPointer();
 int isStackEmpty(StackNodePointer);
-int getLastConditionStatement(int );
 SymbolPointer createSymbolPointer();
-void addIfToConditionStatement(int*);
 char *popFromStack(StackNodePointer*);
-void addElseToConditionStatement(int*);
 void messageError(TokenPointer, char*);
-void initializeConditionStatement(int*);
 VariableKeyword getVariableKeyword(char*);
 void pushToStack(StackNodePointer*, char*);
-void removeLastFromConditionStatement(int*);
-void syntaxAnalyze(TokenPointer, SymbolPointer*);
+int syntaxAnalyze(TokenPointer, SymbolPointer*);
 void unexpectedTokenException(TokenPointer, char*);
 SymbolPointer getSymbolFromTable(SymbolPointer, char*);
 SymbolPointer getSymbolFromTable(SymbolPointer, char*);
 void insertSymbolToTable(SymbolPointer*, SymbolPointer);
-void checkDefiniteExpression(TokenPointer*, SymbolPointer*, SymbolPointer);
 void checkConditionalExpression(TokenPointer*, SymbolPointer);
+void checkDefiniteExpression(TokenPointer*, SymbolPointer*, SymbolPointer);
 
 // Methods for Intermediate Language Generation
 char *buildPreTabsString(int);
@@ -104,7 +97,11 @@ void loadToken(Token * head);
 void printList(Token * head);
 void loadSecond(Token * head);
 void tokenizer(TokenPointer*);
-void load(Token* head, char a[]);
+void load(Token*, char*);
+
+void skipToToken(TokenPointer*, char*);
+
+int hasError = 0;
 
 int main() {
 
@@ -115,13 +112,15 @@ int main() {
     tokenizer(&headToken);
 
     syntaxAnalyze(headToken->nextPointer, &headSymbol);
-    generateIRCode(headToken->nextPointer, headSymbol);
+    if (!hasError){
+        generateIRCode(headToken->nextPointer, headSymbol);
+    }
 
     return 0;
 
 }
 
-void syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
+int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
 
     char *token;
     State currentState = NIY;
@@ -150,10 +149,26 @@ void syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                                         if (strcmp(temp->text, "{") == 0) {
                                             scopeState = INSIDE_MAIN;
                                             currentToken = temp;
-                                        } else unexpectedTokenException(currentToken, "Expected {");
-                                    } else unexpectedTokenException(currentToken, "Expected )");
-                                } else unexpectedTokenException(currentToken, "Expected (");
-                            } else messageError(currentToken, "int main() is defined already.");
+                                        } else {
+                                            unexpectedTokenException(currentToken, "Expected {");
+                                            skipToToken(&currentToken, "{");
+                                            hasError = 1 ;
+                                        }
+                                    } else {
+                                        unexpectedTokenException(currentToken, "Expected )");
+                                        skipToToken(&currentToken, ")"); // Todo
+                                        hasError = 1 ;
+                                    }
+                                } else {
+                                    unexpectedTokenException(currentToken, "Expected (");
+                                    skipToToken(&currentToken, "(");
+                                    hasError = 1 ;
+                                }
+                            } else {
+                                messageError(currentToken, "int main() is defined already.");
+                                skipToToken(&currentToken, ";");
+                                hasError = 1 ;
+                            }
                         } else {
                             symbol = createSymbolPointer();
                             symbol->type = getVariableKeyword(token);
@@ -164,13 +179,38 @@ void syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                             if (strcmp(currentToken->nextPointer->text, "(") == 0) {
                                 currentToken = currentToken->nextPointer;
                                 currentState = IF_CONDITION;
-                            } else unexpectedTokenException(currentToken->nextPointer, "Expected (");
-                        } else messageError(currentToken, "If is not allowed outside main!");
+                            } else {
+                                unexpectedTokenException(currentToken->nextPointer, "Expected (");
+                                skipToToken(&currentToken, "("); /// Todo
+                                hasError = 1 ;
+                            }
+                        } else {
+                            messageError(currentToken, "If is not allowed outside main!");
+                            skipToToken(&currentToken, "{"); // Todo
+                            hasError = 1 ;
+                        }
+                    } else if (strcmp(token, "while") == 0) {
+                        if (scopeState == INSIDE_MAIN) {
+                            if (strcmp(currentToken->nextPointer->text, "(") == 0) {
+                                currentToken = currentToken->nextPointer;
+                                currentState = WHILE_CONDITION;
+                            } else {
+                                unexpectedTokenException(currentToken->nextPointer, "Expected (");
+                                skipToToken(&currentToken, "(");
+                                hasError = 1 ;
+                            }
+                        } else {
+                            messageError(currentToken, "While is not allowed outside main!");
+                            skipToToken(&currentToken, "{");
+                            hasError = 1 ;
+                        }
                     } else if (strcmp(token, "else") == 0) {
                         messageError(currentToken, "No if to use else after that!");
+                        skipToToken(&currentToken, "{"); // Todo
+                        hasError = 1 ;
                     }
                 } else if (strcmp(token, "return") == 0) {
-                    currentState = RETURN;
+                    currentState = RETURN; // Todo: Nothing Allowed After return
                 } else if (strcmp(token, "}") == 0) {
                     if (!isConditionStackEmpty(conditionTopPointer)) {
                         ConditionStackNode conditionNode = popFromConditionStack(&conditionTopPointer);
@@ -180,21 +220,43 @@ void syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                                 if (strcmp(currentToken->nextPointer->text, "{") == 0) {
                                     currentToken = currentToken->nextPointer;
                                     pushToConditionStack(&conditionTopPointer, 0, 0, 0);
-                                } else unexpectedTokenException(currentToken, "Expected {");
+                                } else {
+                                    unexpectedTokenException(currentToken, "Expected {");
+                                    skipToToken(&currentToken, "{");
+                                    hasError = 1 ;
+                                }
                             } // Nothing Special Was done... !
                         } // Nothing Special Was done... !
                     } else if (scopeState == INSIDE_MAIN) {
                         if (mainHasReturned) scopeState = START;
-                        else messageError(currentToken, "Can't close the main function before returning.");
-                    } else messageError(currentToken, "No scope to close!");
+                        else {
+                            messageError(currentToken, "Can't close the main function before returning.");
+                            hasError = 1 ;
+                        } // Todo
+                    } else {
+                        messageError(currentToken, "No scope to close!");
+                        hasError = 1 ;
+                    }
                 } else if (isValidIdentifier(token)) {
                     if (scopeState == INSIDE_MAIN) {
                         symbol = getSymbolFromTable(*headSymbol, token);
                         if (symbol != NULL) {
                             currentState = ID;
-                        } else messageError(currentToken, "the variable wasn't defined but used!");
+                        } else {
+                            messageError(currentToken, "the variable wasn't defined but used!");
+                            skipToToken(&currentToken, ";");
+                            hasError = 1 ;
+                        }
+                    } else {
+                        messageError(currentToken, "Can't work with identifiers outside main");
+                        skipToToken(&currentToken, ";");
+                        hasError = 1 ;
                     }
-                } else unexpectedTokenException(currentToken, "Expected a valid start");
+                } else {
+                    unexpectedTokenException(currentToken, "Expected a valid start");
+                    skipToToken(&currentToken, ";");
+                    hasError = 1 ;
+                }
                 break;
             }
 
@@ -202,18 +264,33 @@ void syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                 if (isValidIdentifier(token)) {
                     symbol->name = token;
                     currentState = ID;
+                } else {
+                    unexpectedTokenException(currentToken, "Expected a valid identifier");
+                    skipToToken(&currentToken, ";");
+                    hasError = 1;
+                    currentState = NIY;
                 }
                 break;
             }
 
             case ID: {
-                // Todo: Check Comma
                 if (strcmp(token, "=") == 0) {
                     currentState = ASSIGN;
                 } else if (strcmp(token, ";") == 0) {
                     insertSymbolToTable(headSymbol, symbol);
                     currentState = NIY;
-                } else unexpectedTokenException(currentToken, "Expected ; or =");
+                } else if (strcmp(token, ",") == 0) {
+                    insertSymbolToTable(headSymbol, symbol);
+                    VariableKeyword type = symbol->type;
+                    symbol = createSymbolPointer();
+                    symbol->type = type;
+                    currentState = KEYWORD;
+                } else {
+                    unexpectedTokenException(currentToken, "Expected ; or = or comma");
+                    skipToToken(&currentToken, ";");
+                    hasError = 1;
+                    currentState = NIY;
+                }
                 break;
             }
 
@@ -230,23 +307,49 @@ void syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                 break;
             }
 
+            case WHILE_CONDITION: {
+                checkConditionalExpression(&currentToken, *headSymbol);
+                pushToConditionStack(&conditionTopPointer, 0, 0, 1);
+                currentState = NIY;
+                break;
+            }
+
             case RETURN: {
                 if (isExpression(token)) {
                     if (strcmp(currentToken->nextPointer->text, ";") == 0) {
                         mainHasReturned = 1;
                         currentToken = currentToken->nextPointer;
                         currentState = NIY;
-                    } else unexpectedTokenException(currentToken->nextPointer, "Expected ; after return's expression");
-                } else unexpectedTokenException(currentToken, "Expected an expression after return");
+                    } else {
+                        unexpectedTokenException(currentToken->nextPointer, "Expected ; after return's expression");
+                        skipToToken(&currentToken, ";");
+                        hasError = 1 ;
+                        currentState = NIY;
+                    }
+                } else {
+                    unexpectedTokenException(currentToken, "Expected an expression after return");
+                    skipToToken(&currentToken, ";");
+                    hasError = 1 ;
+                    currentState = NIY;
+                }
                 break;
             }
 
         }
 
-        currentToken = currentToken->nextPointer;
+        if (currentToken != NULL) currentToken = currentToken->nextPointer;
 
     }
 
+    return hasError;
+
+}
+
+void skipToToken(TokenPointer *currentToken, char *token) {
+    while ((*currentToken) != NULL) {
+        if (strcmp((*currentToken)->text, token) == 0) break;
+        (*currentToken) = (*currentToken)->nextPointer;
+    }
 }
 
 void preprocessor(void) {
@@ -320,21 +423,21 @@ void loadSecond(Token * head) {
         fscanf(p, "%s", abbas);
         if (strcmp(abbas, "include") == 0) {
             fscanf(p, "%s", abbas);
-            if (abbas[i] == '<') {
-                while (abbas[i] != '>' && abbas[i] != '\0') {
+            if (abbas[i] == '\"') {
+                while (abbas[i] != '\"' && abbas[i] != '\0') {
                     i++;
                 }
-                if (abbas[i] != '>') {
+                if (abbas[i] != '\"') {
                     printf("ERROR 1 :D\n");
                     exit(1);
                 } else {
                     fseek(p, 0, SEEK_SET);
                     fgets(a, 100, p);
                     i = 0;
-                    while (a[i] != '<')
+                    while (a[i] != '\"')
                         i++;
                     i++;
-                    while (a[i] != '>') {
+                    while (a[i] != '\"') {
                         b[j] = a[i];
                         i++;
                         j++;
@@ -441,7 +544,7 @@ void generateIRCode(TokenPointer currentToken, SymbolPointer headSymbol) {
                         printf("%sT%d := %s\n", buildPreTabsString(preTabs), symbol->index, generateExpressionIRCode(&currentToken, headSymbol, preTabs));
                     } else {
                         while (strcmp(currentToken->text, ";") != 0) currentToken = currentToken->nextPointer;
-                        // Sets the TokenPointer on the semicolon.
+                        // Sets the TokenPointer on the semicolon, Handles the comma
                     }
                 }
             } else if (strcmp(token, "if") == 0) {
@@ -456,7 +559,7 @@ void generateIRCode(TokenPointer currentToken, SymbolPointer headSymbol) {
                     int index=conditionIndex, elseIndex=index+1;
                     conditionIndex += 2;
 
-                    printf("%sIF %s THEN L%d ELSE L%d\n", buildPreTabsString(preTabs), conditionResult, index, index+1);
+                    printf("%sIF %s THEN L%d ELSE L%d\n", buildPreTabsString(preTabs), conditionResult, index, elseIndex);
                     printf("%sL%d:\n", buildPreTabsString(preTabs), index);
                     preTabs++;
                     pushToConditionStack(&conditionTopPointer, index, elseIndex, 0);
@@ -475,18 +578,17 @@ void generateIRCode(TokenPointer currentToken, SymbolPointer headSymbol) {
 
             } else if (strcmp(token, "while") == 0) {
 
-                // Todo: Check While
+                int index = conditionIndex;
+                conditionIndex++;
+
+                printf("%sW%d:\n", buildPreTabsString(preTabs), index);
+                preTabs++;
 
                 currentToken = currentToken->nextPointer->nextPointer; // Set The TokenPointer to after (
                 char conditionResult[50];
                 strcpy(conditionResult, generateConditionExpressionIRCode(&currentToken, headSymbol, preTabs));
                 currentToken = currentToken->nextPointer; // set the TokenPointer on {
 
-                int index = conditionIndex;
-                conditionIndex++;
-
-                printf("%sW%d:\n", buildPreTabsString(preTabs), index);
-                preTabs++;
                 printf("%sIF %s THEN L%d\n", buildPreTabsString(preTabs), conditionResult, index);
                 printf("%sL%d:\n", buildPreTabsString(preTabs), index);
                 pushToConditionStack(&conditionTopPointer, index, -1, 1);
@@ -504,25 +606,26 @@ void generateIRCode(TokenPointer currentToken, SymbolPointer headSymbol) {
 
             if (!isConditionStackEmpty(conditionTopPointer)) {
                 if (conditionTopPointer->isWhile) {
-                    printf("%sGOTO W%d", buildPreTabsString(preTabs), conditionTopPointer->index);
+                    printf("%sGOTO W%d\n", buildPreTabsString(preTabs), conditionTopPointer->index);
                     popFromConditionStack(&conditionTopPointer);
-                    preTabs--;
+                    preTabs -= 2;
                 } else {
                     if (conditionTopPointer->elseIndex == -1) {
                         popFromConditionStack(&conditionTopPointer);
                         preTabs--;
                     } else {
-                        popFromConditionStack(&conditionTopPointer);
+                        int elseIndex = popFromConditionStack(&conditionTopPointer).elseIndex;
                         preTabs--;
-                        printf("%sL%d:\n", buildPreTabsString(preTabs), conditionTopPointer->elseIndex);
+                        printf("%sL%d:\n", buildPreTabsString(preTabs), elseIndex);
                         preTabs++;
-                        pushToConditionStack(&conditionTopPointer, conditionTopPointer->elseIndex, -1, 0);
+                        pushToConditionStack(&conditionTopPointer, elseIndex, -1, 0);
                         currentToken = currentToken->nextPointer->nextPointer; // Set TokenPointer on {
                     }
                 }
             } // Else: it was main that was closed
 
         }
+
         currentToken = currentToken->nextPointer;
 
     }
@@ -536,7 +639,7 @@ char *generateExpressionIRCode(TokenPointer *tokenPointer, SymbolPointer headSym
 
     if (strcmp((*tokenPointer)->nextPointer->text, ";") == 0) {
         strcpy(result, (*tokenPointer)->text);
-        (*tokenPointer) = (*tokenPointer)->nextPointer->nextPointer;
+        (*tokenPointer) = (*tokenPointer)->nextPointer;
         if (strcmp(result, "NULL") == 0) result = 0;
         return result;
     } else {
@@ -608,7 +711,6 @@ char *generateConditionExpressionIRCode(TokenPointer *tokenPointer, SymbolPointe
     sprintf(result, "%s %s %s", token1, op, token2);
     return result;
 
-
 }
 
 void pushToConditionStack(ConditionStackNodePointer *topPointer, int index, int elseIndex, int isWhile) {
@@ -636,12 +738,13 @@ int hasElse(TokenPointer tokenPointer) {
 
     char *token;
     int index = 0;
-    ConditionStackNodePointer topPointer;
+    ConditionStackNodePointer topPointer = NULL;
     TokenPointer currentToken = tokenPointer;
 
     do {
 
         token = currentToken->text;
+
         if (strcmp(token, "{") == 0) {
             pushToConditionStack(&topPointer, index++, -1, 0);
         } else if (strcmp(token, "}") == 0) {
@@ -649,7 +752,8 @@ int hasElse(TokenPointer tokenPointer) {
                 if (strcmp(currentToken->nextPointer->text, "else") == 0) return 1;
                 else return 0;
             } else {
-                popFromConditionStack(&topPointer);
+                popFromConditionStack(&topPointer).index;
+                token = currentToken->nextPointer->text;
             }
         }
 
@@ -662,9 +766,10 @@ int hasElse(TokenPointer tokenPointer) {
 }
 
 char *buildPreTabsString(int preTabsCount) {
-    char *result = "";
+    char *result = malloc(sizeof(char) * 100);
+    result[0] = '\0';
     while (preTabsCount-- > 0) {
-        strcat(result, "\t");
+        strcat(result, "    ");
     }
     return result;
 }
@@ -676,7 +781,11 @@ void checkDefiniteExpression(TokenPointer *tokenPointer, SymbolPointer *headSymb
             symbol->value = (*tokenPointer)->text;
             insertSymbolToTable(headSymbol, symbol);
             (*tokenPointer) = (*tokenPointer)->nextPointer;
-        } else unexpectedTokenException(*tokenPointer, "Expected an expression");
+        } else {
+            unexpectedTokenException(*tokenPointer, "Expected an expression");
+            skipToToken(tokenPointer, ";");
+            hasError = 1;
+        }
     } else if (isOperator((*tokenPointer)->nextPointer->text)) {
         // Todo: Calculate Expression and assign to value
         if (isExpression((*tokenPointer)->text)) {
@@ -684,10 +793,20 @@ void checkDefiniteExpression(TokenPointer *tokenPointer, SymbolPointer *headSymb
             if (isExpression((*tokenPointer)->text)) {
                 insertSymbolToTable(headSymbol, symbol);
                 (*tokenPointer) = (*tokenPointer)->nextPointer;
-            } else unexpectedTokenException(*tokenPointer, "Expected an expression");
-        } else unexpectedTokenException(*tokenPointer, "Expected an expression");
+            } else {
+                unexpectedTokenException(*tokenPointer, "Expected an expression");
+                skipToToken(tokenPointer, ";");
+                hasError = 1;
+            }
+        } else {
+            unexpectedTokenException(*tokenPointer, "Expected an expression");
+            skipToToken(tokenPointer, ";");
+            hasError = 1;
+        }
     } else {
-        unexpectedTokenException(*tokenPointer, "Expected ; or operator");
+        unexpectedTokenException((*tokenPointer)->nextPointer, "Expected ; or operator");
+        skipToToken(tokenPointer, ";");
+        hasError = 1;
     }
 
 }
@@ -704,11 +823,31 @@ void checkConditionalExpression(TokenPointer *tokenPointer, SymbolPointer headSy
                     (*tokenPointer) = (*tokenPointer)->nextPointer;
                     if (strcmp((*tokenPointer)->text, "{") == 0) {
                         return;
-                    } else unexpectedTokenException(*tokenPointer, "Expected {");
-                } else unexpectedTokenException(*tokenPointer, "Expected (");
-            } else unexpectedTokenException(*tokenPointer, "Expected an expression");
-        } else unexpectedTokenException(*tokenPointer, "Expected a conditional operator");
-    } else unexpectedTokenException(*tokenPointer, "Expected an expression");
+                    } else {
+                        unexpectedTokenException(*tokenPointer, "Expected {");
+                        skipToToken(tokenPointer, "{"); // Todo
+                        hasError = 1;
+                    }
+                } else {
+                    unexpectedTokenException(*tokenPointer, "Expected (");
+                    skipToToken(tokenPointer, "{"); // Todo
+                    hasError = 1;
+                }
+            } else {
+                unexpectedTokenException(*tokenPointer, "Expected an expression");
+                skipToToken(tokenPointer, "{");
+                hasError = 1;
+            }
+        } else {
+            unexpectedTokenException(*tokenPointer, "Expected a conditional operator");
+            skipToToken(tokenPointer, "{");
+            hasError = 1;
+        }
+    } else {
+        unexpectedTokenException(*tokenPointer, "Expected an expression");
+        skipToToken(tokenPointer, "{");
+        hasError = 1;
+    }
 
 }
 
@@ -887,37 +1026,14 @@ int getPrecedence(char *operator) {
 
 void messageError(TokenPointer tokenPointer, char *message) {
     printf("Error at line %d, %s\n", tokenPointer->lineNumber, message);
-    exit(1);
 }
 
 void unexpectedTokenException(TokenPointer tokenPointer, char *description) {
     printf("Error at line %d. %s but found %s\n", tokenPointer->lineNumber, description, tokenPointer->text);
-    exit(1);
-}
-
-void addElseToConditionStatement(int *conditionStatement) {
-    *conditionStatement = *conditionStatement << 1;
-}
-
-void addIfToConditionStatement(int *conditionStatement) {
-    *conditionStatement = *conditionStatement << 1;
-    *conditionStatement = *conditionStatement | 1;
-}
-
-void removeLastFromConditionStatement(int *conditionStatement) {
-    *conditionStatement = *conditionStatement >> 1;
-    if (*conditionStatement == 1) *conditionStatement = 0;
-}
-
-void initializeConditionStatement(int *conditionStatement) {
-    if (*conditionStatement == 0) *conditionStatement = 1;
-}
-
-int getLastConditionStatement(int conditionStatement) {
-    return conditionStatement & 1;
 }
 
 void insertSymbolToTable(SymbolPointer *headSymbol, SymbolPointer symbol) {
+
     int index = 1;
     SymbolPointer temp;
     if (*headSymbol == NULL) {
@@ -925,14 +1041,26 @@ void insertSymbolToTable(SymbolPointer *headSymbol, SymbolPointer symbol) {
         symbol->nextPointer = NULL;
         *headSymbol = symbol;
     } else {
-        temp = *headSymbol;
-        while (temp->nextPointer != NULL) {
-            temp = temp->nextPointer;
-            index++;
+        int hasAdded = 0;
+        SymbolPointer tmp = *headSymbol;
+        while (tmp != NULL) {
+            if (strcmp(tmp->name, symbol->name) == 0) {
+                tmp->value = symbol->value;
+                hasAdded = 1;
+                break;
+            }
+            tmp = tmp->nextPointer;
         }
-        symbol->index = index;
-        symbol->nextPointer = NULL;
-        temp->nextPointer = symbol;
+        if (!hasAdded) {
+            temp = *headSymbol;
+            while (temp->nextPointer != NULL) {
+                temp = temp->nextPointer;
+                index++;
+            }
+            symbol->index = index;
+            symbol->nextPointer = NULL;
+            temp->nextPointer = symbol;
+        }
     }
 }
 
@@ -948,10 +1076,6 @@ SymbolPointer createSymbolPointer() {
     return (SymbolPointer) malloc(sizeof(Symbol));
 }
 
-TokenPointer createTokenPointer() {
-    return (TokenPointer) malloc(sizeof(Token));
-}
-
 int isValidKeyword(char *token) {
     return
             strcmp(token, "int") == 0 ||
@@ -959,6 +1083,7 @@ int isValidKeyword(char *token) {
             strcmp(token, "bool") == 0 ||
             strcmp(token, "char") == 0 ||
             strcmp(token, "if") == 0 ||
+            strcmp(token, "while") == 0 ||
             strcmp(token, "else") == 0 ||
             strcmp(token, "main") == 0 ||
             strcmp(token, "void") == 0 ||
@@ -979,6 +1104,7 @@ Keyword getKeyword(char *token) {
     else if (strcmp(token, "char") == 0) return CHAR;
     else if (strcmp(token, "bool") == 0) return BOOL;
     else if (strcmp(token, "if") == 0) return IF;
+    else if (strcmp(token, "while") == 0) return WHILE;
     else if (strcmp(token, "else") == 0) return ELSE;
     else if (strcmp(token, "main") == 0) return MAIN;
     else if (strcmp(token, "void") == 0) return VOID;
@@ -1016,7 +1142,6 @@ void pushToStack(StackNodePointer *topPointer, char *data) {
 }
 
 char *popFromStack(StackNodePointer *topPointer) {
-
     StackNodePointer tmp = *topPointer;
     char *result = tmp->data;
     *topPointer = (*topPointer)->nextPointer;
