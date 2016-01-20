@@ -42,7 +42,6 @@ struct Symbol {
     struct Symbol *nextPointer;
 };
 
-int getPrecedence(char*);
 typedef enum State State;
 typedef struct Token Token;
 typedef struct Symbol Symbol;
@@ -59,6 +58,7 @@ typedef ConditionStackNode *ConditionStackNodePointer;
 int isNumber(char*);
 int isOperator(char*);
 int isExpression(char*);
+int getPrecedence(char*);
 Keyword getKeyword(char*);
 int isValidKeyword(char*);
 int isVariableKeyword(char*);
@@ -128,6 +128,7 @@ int main() {
     /*
      * TODO: COMPLEX CONDITIONS
      * TODO: AFTER RETURN
+     * TODO: Comma Initialization
      */
     return 0;
 
@@ -187,7 +188,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                                                     }
                                                 } else {
                                                     unexpectedTokenException(currentToken, "Expected )");
-                                                    skipToToken(&currentToken, ")"); // TODO
+                                                    skipToToken(&currentToken, ")");
                                                     hasError = 1 ;
                                                 }
                                             } else {
@@ -334,7 +335,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                                 } else messageError(currentToken, "Main wasn't closed with }");
                             } else {
                                 if (strcmp(currentToken->nextPointer->text, "else") == 0) {
-                                    TokenPointer temp = currentToken->nextPointer;
+                                    temp = currentToken->nextPointer;
                                     if (temp != NULL) {
                                         currentToken = temp;
                                         if (strcmp(currentToken->nextPointer->text, "{") == 0) {
@@ -451,7 +452,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                 if (scopeState == INSIDE_MAIN) {
                     if (!mainHasReturned) {
                         if (returnType == 1) {
-                            if (isExpression(token)) {
+                            if (isExpression(token) && getExpressionType(&currentToken, *headSymbol)==INTK) {
                                 if (currentToken->nextPointer != NULL) {
                                     if (strcmp(currentToken->nextPointer->text, ";") == 0) {
                                         mainHasReturned = 1;
@@ -468,7 +469,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                                     exit(1);
                                 }
                             } else {
-                                unexpectedTokenException(currentToken, "Expected an expression after return");
+                                unexpectedTokenException(currentToken, "Expected an integer after return");
                                 skipToToken(&currentToken, ";");
                                 hasError = 1 ;
                                 currentState = NIY;
@@ -729,8 +730,6 @@ void loadToken(Token * head , int lineNumber) {
             *newLine = '\0';
         }
         token = strtok(str, delim);
-        /*if (token == NULL)
-            counter--;*/
         while (token != NULL) {
             newToken = (TokenPointer) malloc(sizeof(Token));
             current->nextPointer = newToken;
@@ -765,7 +764,7 @@ void generateIRCode(TokenPointer currentToken, SymbolPointer headSymbol) {
     int conditionIndex=1, preTabs=0;
 
     SymbolPointer symbol;
-    ConditionStackNodePointer conditionTopPointer = NULL;\
+    ConditionStackNodePointer conditionTopPointer = NULL;
 
     while (currentToken != NULL) {
 
@@ -1185,12 +1184,6 @@ void checkComplexExpression(TokenPointer *tokenPointer, SymbolPointer *headSymbo
     StackNodePointer topParStack = NULL;
     StackNodePointer topPrecedenceStack = NULL;
     StackNodePointer topCalculatorStack = NULL;
-
-    // TODO:
-    // Todo: NULL
-    // TODO: Handle Multiple initializations
-    // TODO: Handle Unknown Value
-    // Todo: Comma Initialization
 
     switch (symbol->type) {
 
@@ -1841,7 +1834,7 @@ char *generateParStackIR(StackNodePointer *topCalculatorNode, SymbolPointer head
         if (isValidIdentifier(token1)) {
             sprintf(token1, "T%d", getSymbolFromTable(headSymbol, token1)->index);
         } else {
-            printf("%sT_%d = %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token1);
+            printf("%sT_%d := %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token1);
             sprintf(token1, "T_%d", (*tempIndex)-1);
         }
     }
@@ -1854,12 +1847,12 @@ char *generateParStackIR(StackNodePointer *topCalculatorNode, SymbolPointer head
             if (isValidIdentifier(token2)) {
                 sprintf(token2, "T%d", getSymbolFromTable(headSymbol, token2)->index);
             } else {
-                printf("%sT_%d = %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token2);
+                printf("%sT_%d := %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token2);
                 sprintf(token2, "T_%d", (*tempIndex)-1);
             }
         }
 
-        printf("%sT_%d = %s %s %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token1, operation, token2);
+        printf("%sT_%d := %s %s %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token2, operation, token1);
         sprintf(result, "T_%d", (*tempIndex)-1);
         pushToStack(topCalculatorNode, result);
         return generateParStackIR(topCalculatorNode, headSymbol, tempIndex, preTabs);
@@ -1867,8 +1860,6 @@ char *generateParStackIR(StackNodePointer *topCalculatorNode, SymbolPointer head
     } else return token1;
 
 }
-
-
 
 char *generateStackIR(StackNodePointer *topCalculatorNode, SymbolPointer headSymbol, int *tempIndex, int preTabs) {
 
@@ -1878,7 +1869,7 @@ char *generateStackIR(StackNodePointer *topCalculatorNode, SymbolPointer headSym
         if (isValidIdentifier(token1)) {
             sprintf(token1, "T%d", getSymbolFromTable(headSymbol, token1)->index);
         } else {
-            printf("%sT_%d = %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token1);
+            printf("%sT_%d := %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token1);
             sprintf(token1, "T_%d", (*tempIndex)-1);
         }
     }
@@ -1891,12 +1882,12 @@ char *generateStackIR(StackNodePointer *topCalculatorNode, SymbolPointer headSym
             if (isValidIdentifier(token2)) {
                 sprintf(token2, "T%d", getSymbolFromTable(headSymbol, token2)->index);
             } else {
-                printf("%sT_%d = %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token2);
+                printf("%sT_%d := %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token2);
                 sprintf(token2, "T_%d", (*tempIndex)-1);
             }
         }
 
-        printf("%sT_%d = %s %s %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token1, operation, token2);
+        printf("%sT_%d := %s %s %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token2, operation, token1);
         sprintf(result, "T_%d", (*tempIndex)-1);
         pushToStack(topCalculatorNode, result);
         return generateStackIR(topCalculatorNode, headSymbol, tempIndex, preTabs);
@@ -2133,6 +2124,7 @@ int isVariableKeyword(char *token) {
             strcmp(token, "bool") == 0 ||
             strcmp(token, "char") == 0;
 }
+
 Keyword getKeyword(char *token) {
     if (strcmp(token, "int") == 0) return INT;
     else if (strcmp(token, "float") == 0) return FLOAT;
