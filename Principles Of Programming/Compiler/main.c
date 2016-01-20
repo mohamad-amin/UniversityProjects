@@ -123,7 +123,7 @@ int main() {
     tokenizer(&headToken, preprocessor());
     syntaxAnalyze(headToken->nextPointer, &headSymbol);
     if (!hasError){
-          generateIRCode(headToken->nextPointer, headSymbol);
+        generateIRCode(headToken->nextPointer, headSymbol);
     }
     /*
      * TODO: COMPLEX CONDITIONS
@@ -143,7 +143,6 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
     SymbolPointer symbol;
     int mainHasReturned = 0;
     ConditionStackNodePointer conditionTopPointer = NULL;
-    // Todo: Check When Next is Null
 
     while (currentToken != NULL) {
 
@@ -324,7 +323,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                         hasError = 1 ;
                     }
                 } else if (strcmp(token, "return") == 0) {
-                    currentState = RETURN; // Todo: Nothing Allowed After return
+                    currentState = RETURN;
                 } else if (strcmp(token, "}") == 0) {
                     if (!isConditionStackEmpty(conditionTopPointer)) {
                         ConditionStackNode conditionNode = popFromConditionStack(&conditionTopPointer);
@@ -477,7 +476,6 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                         } else {
                             if (strcmp(token, ";") == 0) {
                                 mainHasReturned = 1;
-//                                currentToken = currentToken->nextPointer; TODO WHY
                                 currentState = NIY;
                             } else {
                                 unexpectedTokenException(currentToken, "Expected a ; after return in void main()");
@@ -711,12 +709,13 @@ void tokenizer(TokenPointer *headToken , int lineNumber) {
 }
 
 void loadToken(Token * head , int lineNumber) {
-    Token * current, * newToken;
-    char * str, * delim, *token, *newLine;
-    int counter = 2 , lineNum;
+    TokenPointer current;
+    TokenPointer newToken;
+    char *str, *delim, *token, *newLine;
+    int counter=2 , lineNum;
     current = head;
     delim = " ";
-    FILE * p;
+    FILE *p;
     p = fopen("tmp.c", "r");
     if (p == NULL) {
         printf("ERROR!\n");
@@ -730,10 +729,10 @@ void loadToken(Token * head , int lineNumber) {
             *newLine = '\0';
         }
         token = strtok(str, delim);
-        if ( token == NULL)
-            counter --;
+        /*if (token == NULL)
+            counter--;*/
         while (token != NULL) {
-            newToken = (Token *) malloc(sizeof (Token));
+            newToken = (TokenPointer) malloc(sizeof(Token));
             current->nextPointer = newToken;
             newToken->nextPointer = NULL;
             newToken->text = token;
@@ -1036,7 +1035,6 @@ char *buildPreTabsString(int preTabsCount) {
 
 void checkDefiniteExpression(TokenPointer *tokenPointer, SymbolPointer *headSymbol, SymbolPointer symbol) {
 
-    // Todo: check comma as operator
     if (strcmp((*tokenPointer)->nextPointer->text, ";") == 0) {
         if (isExpression((*tokenPointer)->text)) {
             symbol->value = (*tokenPointer)->text;
@@ -1048,7 +1046,6 @@ void checkDefiniteExpression(TokenPointer *tokenPointer, SymbolPointer *headSymb
             hasError = 1;
         }
     } else if (isOperator((*tokenPointer)->nextPointer->text)) {
-        // Todo: Calculate Expression and assign to value
         if (isExpression((*tokenPointer)->text)) {
             (*tokenPointer) = (*tokenPointer)->nextPointer->nextPointer;
             if (isExpression((*tokenPointer)->text)) {
@@ -1749,7 +1746,6 @@ double calculateFloatParStack(StackNodePointer *topCalculatorNode, TokenPointer 
                         }
                     } else {
                         messageError(*currentToken, "Invalid Operator?");
-                        printf("Operator: %s\n", operation); // TODO DEL
                         skipToToken(currentToken, ";");
                         hasError = 1;
                         return 0;
@@ -1810,7 +1806,6 @@ double calculateFloatStack(StackNodePointer *topCalculatorNode, TokenPointer *cu
                 }
             } else {
                 messageError(*currentToken, "Invalid Operator?");
-                printf("Operator: %s\n", operation); // TODO DEL
                 skipToToken(currentToken, ";");
                 hasError = 1;
                 return 0;
