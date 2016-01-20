@@ -258,7 +258,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                                                     }
                                                 } else {
                                                     unexpectedTokenException(currentToken, "Expected )");
-                                                    skipToToken(&currentToken, ")"); // Todo
+                                                    skipToToken(&currentToken, ")");
                                                     hasError = 1 ;
                                                 }
                                             } else {
@@ -281,7 +281,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                                 }
                             } else {
                                 unexpectedTokenException(currentToken, "Expected a valid start");
-                                skipToToken(&currentToken, ";"); // Todo
+                                skipToToken(&currentToken, ";");
                                 hasError = 1;
                             }
                         } else {
@@ -296,7 +296,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                                     currentState = IF_CONDITION;
                                 } else {
                                     unexpectedTokenException(currentToken->nextPointer, "Expected (");
-                                    skipToToken(&currentToken, "("); /// Todo
+                                    skipToToken(&currentToken, "(");
                                     hasError = 1 ;
                                 }
                             } else {
@@ -305,7 +305,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                             }
                         } else {
                             messageError(currentToken, "If is not allowed outside main!");
-                            skipToToken(&currentToken, "{"); // Todo
+                            skipToToken(&currentToken, "{");
                             hasError = 1 ;
                         }
                     } else if (strcmp(token, "while") == 0) {
@@ -316,7 +316,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                                     currentState = WHILE_CONDITION;
                                 } else {
                                     unexpectedTokenException(currentToken->nextPointer, "Expected (");
-                                    skipToToken(&currentToken, "("); /// Todo
+                                    skipToToken(&currentToken, "(");
                                     hasError = 1 ;
                                 }
                             } else {
@@ -325,12 +325,12 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                             }
                         } else {
                             messageError(currentToken, "If is not allowed outside main!");
-                            skipToToken(&currentToken, "{"); // Todo
+                            skipToToken(&currentToken, "{");
                             hasError = 1 ;
                         }
                     } else if (strcmp(token, "else") == 0) {
                         messageError(currentToken, "No if to use else after that!");
-                        skipToToken(&currentToken, "{"); // Todo
+                        skipToToken(&currentToken, "{");
                         hasError = 1 ;
                     }
                 } else if (strcmp(token, "return") == 0) {
@@ -1944,12 +1944,12 @@ void checkConditionalExpression(TokenPointer *tokenPointer, SymbolPointer headSy
                         return;
                     } else {
                         unexpectedTokenException(*tokenPointer, "Expected {");
-                        skipToToken(tokenPointer, "{"); // Todo
+                        skipToToken(tokenPointer, "{");
                         hasError = 1;
                     }
                 } else {
                     unexpectedTokenException(*tokenPointer, "Expected (");
-                    skipToToken(tokenPointer, "{"); // Todo
+                    skipToToken(tokenPointer, "{");
                     hasError = 1;
                 }
             } else {
@@ -1963,7 +1963,7 @@ void checkConditionalExpression(TokenPointer *tokenPointer, SymbolPointer headSy
                 return;
             } else {
                 unexpectedTokenException(*tokenPointer, "Expected {");
-                skipToToken(tokenPointer, "{"); // Todo
+                skipToToken(tokenPointer, "{");
                 hasError = 1;
             }
         } else {
