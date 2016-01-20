@@ -137,8 +137,6 @@ int main() {
 
     /*
      * TODO: COMPLEX CONDITIONS
-     * TODO: AFTER RETURN
-     * TODO: Comma Initialization
      */
     return 0;
 
@@ -548,7 +546,11 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                 break;
             }
             case RETURN: {
-                fprintf(outputFile, "Error at last line. Expected an expression for return but nothing found!\n");
+                if (returnType == 1) {
+                    fprintf(outputFile, "Error at last line. Expected an expression for return but nothing found!\n");
+                } else {
+                    fprintf(outputFile, "Error at last line. Expected a ; but nothing found!\n");
+                }
                 hasError = 1;
                 break;
             }
@@ -638,7 +640,7 @@ int loadSecond(Token * head) {
     char a[100], b[100], c, abbas[100];
     int i = 0, j = 0, lineNumber = 0;
     FILE *p;
-    p = fopen("main.c", "r");
+    p = fopen("input.c", "r");
     if (p == NULL) {
         printf("ERROR!\n");
         exit(1);
@@ -668,7 +670,12 @@ int loadSecond(Token * head) {
                         j++;
                     }
                     b[j] = '\0';
-                    lineNumber = load(head, b);
+                    FILE *newF = fopen(b, "r");
+                    if (newF != NULL) {
+                        fclose(newF);
+                        lineNumber = load(head, b);
+                    }
+                    else lineNumber = 0;
                     if (lineNumber == -1){
                         lineNumber = 0;
                     }
@@ -1217,7 +1224,6 @@ void checkComplexExpression(TokenPointer *tokenPointer, SymbolPointer *headSymbo
                                 pushToStack(&topCalculatorStack, "0");
                                 currentState = 0; // Wants Operator or )
                             } else {
-                                unexpectedTokenException(*tokenPointer, "Expected an integer");
                                 skipToToken(tokenPointer, ";");
                                 emptyStack(&topParStack);
                                 emptyStack(&topCalculatorStack);

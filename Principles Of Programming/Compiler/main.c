@@ -114,17 +114,27 @@ char *generateComplexExpressionIRCode(TokenPointer*, SymbolPointer, int, SymbolP
 
 int hasError = 0;
 int returnType = -1; // 0 = Void and 1 = Expression
+FILE *outputFile;
 
 int main() {
 
     TokenPointer headToken = NULL;
     SymbolPointer headSymbol = NULL;
 
+    outputFile = fopen("out.txt", "w");
+    if (outputFile == NULL) {
+        printf("Error!\n");
+        exit(1);
+    }
+
     tokenizer(&headToken, preprocessor());
     syntaxAnalyze(headToken->nextPointer, &headSymbol);
     if (!hasError){
         generateIRCode(headToken->nextPointer, headSymbol);
     }
+
+    fclose(outputFile);
+
     /*
      * TODO: COMPLEX CONDITIONS
      * TODO: AFTER RETURN
@@ -248,7 +258,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                                                     }
                                                 } else {
                                                     unexpectedTokenException(currentToken, "Expected )");
-                                                    skipToToken(&currentToken, ")"); // Todo
+                                                    skipToToken(&currentToken, ")");
                                                     hasError = 1 ;
                                                 }
                                             } else {
@@ -271,7 +281,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                                 }
                             } else {
                                 unexpectedTokenException(currentToken, "Expected a valid start");
-                                skipToToken(&currentToken, ";"); // Todo
+                                skipToToken(&currentToken, ";");
                                 hasError = 1;
                             }
                         } else {
@@ -286,7 +296,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                                     currentState = IF_CONDITION;
                                 } else {
                                     unexpectedTokenException(currentToken->nextPointer, "Expected (");
-                                    skipToToken(&currentToken, "("); /// Todo
+                                    skipToToken(&currentToken, "(");
                                     hasError = 1 ;
                                 }
                             } else {
@@ -295,7 +305,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                             }
                         } else {
                             messageError(currentToken, "If is not allowed outside main!");
-                            skipToToken(&currentToken, "{"); // Todo
+                            skipToToken(&currentToken, "{");
                             hasError = 1 ;
                         }
                     } else if (strcmp(token, "while") == 0) {
@@ -306,7 +316,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                                     currentState = WHILE_CONDITION;
                                 } else {
                                     unexpectedTokenException(currentToken->nextPointer, "Expected (");
-                                    skipToToken(&currentToken, "("); /// Todo
+                                    skipToToken(&currentToken, "(");
                                     hasError = 1 ;
                                 }
                             } else {
@@ -315,12 +325,12 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                             }
                         } else {
                             messageError(currentToken, "If is not allowed outside main!");
-                            skipToToken(&currentToken, "{"); // Todo
+                            skipToToken(&currentToken, "{");
                             hasError = 1 ;
                         }
                     } else if (strcmp(token, "else") == 0) {
                         messageError(currentToken, "No if to use else after that!");
-                        skipToToken(&currentToken, "{"); // Todo
+                        skipToToken(&currentToken, "{");
                         hasError = 1 ;
                     }
                 } else if (strcmp(token, "return") == 0) {
@@ -393,7 +403,7 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
                         symbol->name = token;
                         currentState = ID;
                     } else {
-                        printf("Error at line %d: %s was already defined!\n", currentToken->lineNumber, token);
+                        fprintf(outputFile, "Error at line %d: %s was already defined!\n", currentToken->lineNumber, token);
                         skipToToken(&currentToken, ";");
                         hasError = 1;
                         currentState = NIY;
@@ -505,40 +515,40 @@ int syntaxAnalyze(TokenPointer currentToken, SymbolPointer *headSymbol) {
     }
 
     if (!isConditionStackEmpty(conditionTopPointer)) {
-        printf("Error at last line. some scopes and main weren't closed!\n");
+        fprintf(outputFile, "Error at last line. some scopes and main weren't closed!\n");
         hasError = 1;
     } else if (scopeState == INSIDE_MAIN) {
-        printf("Error at last line. main() wasn't closed!\n");
+        fprintf(outputFile, "Error at last line. main() wasn't closed!\n");
         hasError = 1;
     } else if (currentState != NIY) {
         switch (currentState) {
             case KEYWORD: {
-                printf("Error at last line. Expected an identifier but nothing found!\n");
+                fprintf(outputFile, "Error at last line. Expected an identifier but nothing found!\n");
                 hasError = 1;
                 break;
             }
             case ID: {
-                printf("Error at last line. Expected = or ; or , but nothing found!\n");
+                fprintf(outputFile, "Error at last line. Expected = or ; or , but nothing found!\n");
                 hasError = 1;
                 break;
             }
             case ASSIGN: {
-                printf("Error at last line. Expected an expression but nothing found!\n");
+                fprintf(outputFile, "Error at last line. Expected an expression but nothing found!\n");
                 hasError = 1;
                 break;
             }
             case IF_CONDITION: {
-                printf("Error at last line. Expected an expression for if condition but nothing found!\n");
+                fprintf(outputFile, "Error at last line. Expected an expression for if condition but nothing found!\n");
                 hasError = 1;
                 break;
             }
             case WHILE_CONDITION: {
-                printf("Error at last line. Expected an expression for while condition but nothing found!\n");
+                fprintf(outputFile, "Error at last line. Expected an expression for while condition but nothing found!\n");
                 hasError = 1;
                 break;
             }
             case RETURN: {
-                printf("Error at last line. Expected an expression for return but nothing found!\n");
+                fprintf(outputFile, "Error at last line. Expected an expression for return but nothing found!\n");
                 hasError = 1;
                 break;
             }
@@ -628,7 +638,7 @@ int loadSecond(Token * head) {
     char a[100], b[100], c, abbas[100];
     int i = 0, j = 0, lineNumber = 0;
     FILE *p;
-    p = fopen("main.c", "r");
+    p = fopen("input.c", "r");
     if (p == NULL) {
         printf("ERROR!\n");
         exit(1);
@@ -776,16 +786,16 @@ void generateIRCode(TokenPointer currentToken, SymbolPointer headSymbol) {
                     while (strcmp(currentToken->text, "{") != 0) {
                         currentToken = currentToken->nextPointer;
                     }
-                    printf("PROCEDURE MAIN\nBEGIN\n");
+                    fprintf(outputFile, "PROCEDURE MAIN\nBEGIN\n");
                     preTabs++;
                 } else {
                     currentToken = currentToken->nextPointer; // Set tokenPointer to the id after the variable keyword
                     symbol = getSymbolFromTable(headSymbol, currentToken->text);
                     if (strcmp(currentToken->nextPointer->text, "=") == 0) {
                         currentToken = currentToken->nextPointer->nextPointer; // Set tokenPointer to after =
-//                        printf("%sR%d := %s\n", buildPreTabsString(preTabs), symbol->index, generateExpressionIRCode(&currentToken, headSymbol, preTabs));
-                        printf("%sR%d := %s\n", buildPreTabsString(preTabs), symbol->index, generateComplexExpressionIRCode(&currentToken, headSymbol, preTabs, symbol));
-                        printf("%sT%d := R%d\n", buildPreTabsString(preTabs), symbol->index, symbol->index);
+//                        fprintf(outputFile, "%sR%d := %s\n", buildPreTabsString(preTabs), symbol->index, generateExpressionIRCode(&currentToken, headSymbol, preTabs));
+                        fprintf(outputFile, "%sR%d := %s\n", buildPreTabsString(preTabs), symbol->index, generateComplexExpressionIRCode(&currentToken, headSymbol, preTabs, symbol));
+                        fprintf(outputFile, "%sT%d := R%d\n", buildPreTabsString(preTabs), symbol->index, symbol->index);
                     } else {
                         while (strcmp(currentToken->text, ";") != 0) currentToken = currentToken->nextPointer;
                         // Sets the TokenPointer on the semicolon, Handles the comma
@@ -796,7 +806,7 @@ void generateIRCode(TokenPointer currentToken, SymbolPointer headSymbol) {
                     while (strcmp(currentToken->text, "{") != 0) {
                         currentToken = currentToken->nextPointer;
                     }
-                    printf("PROCEDURE MAIN\nBEGIN\n");
+                    fprintf(outputFile, "PROCEDURE MAIN\nBEGIN\n");
                     preTabs++;
                 }
             } else if (strcmp(token, "if") == 0) {
@@ -811,8 +821,8 @@ void generateIRCode(TokenPointer currentToken, SymbolPointer headSymbol) {
                     int index=conditionIndex, elseIndex=index+1;
                     conditionIndex += 2;
 
-                    printf("%sIF %s GOTO L%d ELSE L%d\n", buildPreTabsString(preTabs), conditionResult, index, elseIndex);
-                    printf("%sL%d:\n", buildPreTabsString(preTabs), index);
+                    fprintf(outputFile, "%sIF %s GOTO L%d ELSE L%d\n", buildPreTabsString(preTabs), conditionResult, index, elseIndex);
+                    fprintf(outputFile, "%sL%d:\n", buildPreTabsString(preTabs), index);
                     preTabs++;
                     pushToConditionStack(&conditionTopPointer, index, elseIndex, 0);
 
@@ -821,8 +831,8 @@ void generateIRCode(TokenPointer currentToken, SymbolPointer headSymbol) {
                     int index = conditionIndex;
                     conditionIndex++;
 
-                    printf("%sIF %s GOTO L%d\n", buildPreTabsString(preTabs), conditionResult, index);
-                    printf("%sL%d:\n", buildPreTabsString(preTabs), index);
+                    fprintf(outputFile, "%sIF %s GOTO L%d\n", buildPreTabsString(preTabs), conditionResult, index);
+                    fprintf(outputFile, "%sL%d:\n", buildPreTabsString(preTabs), index);
                     preTabs++;
                     pushToConditionStack(&conditionTopPointer, index, -1, 0);
 
@@ -833,8 +843,8 @@ void generateIRCode(TokenPointer currentToken, SymbolPointer headSymbol) {
                 int index = conditionIndex;
                 conditionIndex++;
 
-                printf("%sGOTO W%d\n", buildPreTabsString(preTabs), index);
-                printf("%sW%d:\n", buildPreTabsString(preTabs), index);
+                fprintf(outputFile, "%sGOTO W%d\n", buildPreTabsString(preTabs), index);
+                fprintf(outputFile, "%sW%d:\n", buildPreTabsString(preTabs), index);
                 preTabs++;
 
                 currentToken = currentToken->nextPointer->nextPointer; // Set The TokenPointer to after (
@@ -842,8 +852,8 @@ void generateIRCode(TokenPointer currentToken, SymbolPointer headSymbol) {
                 strcpy(conditionResult, generateConditionExpressionIRCode(&currentToken, headSymbol, preTabs));
                 currentToken = currentToken->nextPointer; // set the TokenPointer on {
 
-                printf("%sIF %s GOTO L%d\n", buildPreTabsString(preTabs), conditionResult, index);
-                printf("%sL%d:\n", buildPreTabsString(preTabs), index);
+                fprintf(outputFile, "%sIF %s GOTO L%d\n", buildPreTabsString(preTabs), conditionResult, index);
+                fprintf(outputFile, "%sL%d:\n", buildPreTabsString(preTabs), index);
                 pushToConditionStack(&conditionTopPointer, index, -1, 1);
                 preTabs++;
 
@@ -854,30 +864,30 @@ void generateIRCode(TokenPointer currentToken, SymbolPointer headSymbol) {
             if (returnType == 1) {
                 symbol = (SymbolPointer) malloc(sizeof(Symbol));
                 symbol->type = INTK;
-//                printf("%sRETURN %s\n", buildPreTabsString(preTabs), generateExpressionIRCode(&currentToken, headSymbol, 0));
-                printf("%sRETURN %s\n", buildPreTabsString(preTabs), generateComplexExpressionIRCode(&currentToken, headSymbol, 0, symbol));
+//                fprintf(outputFile, "%sRETURN %s\n", buildPreTabsString(preTabs), generateExpressionIRCode(&currentToken, headSymbol, 0));
+                fprintf(outputFile, "%sRETURN %s\n", buildPreTabsString(preTabs), generateComplexExpressionIRCode(&currentToken, headSymbol, 0, symbol));
             } else {
-                printf("%sRETURN\n", buildPreTabsString(preTabs));
+                fprintf(outputFile, "%sRETURN\n", buildPreTabsString(preTabs));
             }
             preTabs--;
         } else if (isValidIdentifier(token)) {
             symbol = getSymbolFromTable(headSymbol, token);
             currentToken = currentToken->nextPointer->nextPointer; // Set tokenPointer to after =
             if (strcmp(currentToken->nextPointer->text, ";") == 0 && isValidIdentifier(currentToken->text)) {
-                printf("%sT%d := T%d\n", buildPreTabsString(preTabs), symbol->index, getSymbolFromTable(headSymbol, currentToken->text)->index);
+                fprintf(outputFile, "%sT%d := T%d\n", buildPreTabsString(preTabs), symbol->index, getSymbolFromTable(headSymbol, currentToken->text)->index);
             } else {
-//                printf("%sR%d := %s\n", buildPreTabsString(preTabs),
+//                fprintf(outputFile, "%sR%d := %s\n", buildPreTabsString(preTabs),
 //                       symbol->index, generateExpressionIRCode(&currentToken, headSymbol, preTabs));
-                printf("%sR%d := %s\n", buildPreTabsString(preTabs),
-                       symbol->index, generateComplexExpressionIRCode(&currentToken, headSymbol, preTabs, symbol));
-                printf("%sT%d := R%d\n", buildPreTabsString(preTabs), symbol->index, symbol->index);
+                fprintf(outputFile, "%sR%d := %s\n", buildPreTabsString(preTabs),
+                        symbol->index, generateComplexExpressionIRCode(&currentToken, headSymbol, preTabs, symbol));
+                fprintf(outputFile, "%sT%d := R%d\n", buildPreTabsString(preTabs), symbol->index, symbol->index);
             }
             // Sets the TokenPointer on the semicolon.
         } else if (strcmp(token, "}") == 0) {
 
             if (!isConditionStackEmpty(conditionTopPointer)) {
                 if (conditionTopPointer->isWhile) {
-                    printf("%sGOTO W%d\n", buildPreTabsString(preTabs), conditionTopPointer->index);
+                    fprintf(outputFile, "%sGOTO W%d\n", buildPreTabsString(preTabs), conditionTopPointer->index);
                     popFromConditionStack(&conditionTopPointer);
                     preTabs -= 2;
                 } else {
@@ -887,7 +897,7 @@ void generateIRCode(TokenPointer currentToken, SymbolPointer headSymbol) {
                     } else {
                         int elseIndex = popFromConditionStack(&conditionTopPointer).elseIndex;
                         preTabs--;
-                        printf("%sL%d:\n", buildPreTabsString(preTabs), elseIndex);
+                        fprintf(outputFile, "%sL%d:\n", buildPreTabsString(preTabs), elseIndex);
                         preTabs++;
                         pushToConditionStack(&conditionTopPointer, elseIndex, -1, 0);
                         currentToken = currentToken->nextPointer->nextPointer; // Set TokenPointer on {
@@ -895,7 +905,7 @@ void generateIRCode(TokenPointer currentToken, SymbolPointer headSymbol) {
                 }
             } else {
                 // Main Was Closed
-                printf("CALL MAIN");
+                fprintf(outputFile, "CALL MAIN");
             }
 
         }
@@ -934,14 +944,14 @@ char *generateExpressionIRCode(TokenPointer *tokenPointer, SymbolPointer headSym
         (*tokenPointer) = (*tokenPointer)->nextPointer;
 
         if (!isValidIdentifier(token1)) {
-            printf("%s%c%d := %s\n", buildPreTabsString(preTabs), 'T_', index++, token1);
+            fprintf(outputFile, "%s%c%d := %s\n", buildPreTabsString(preTabs), 'T_', index++, token1);
             sprintf(token1, "T_%d", index-1);
         } else {
             if (strcmp(token1, "NULL") == 0) token1 = 0;
             else sprintf(token1, "T%d", getSymbolFromTable(headSymbol, token1)->index);
         }
         if (!isValidIdentifier(token2)) {
-            printf("%sT_%d := %s\n", buildPreTabsString(preTabs), index++, token2);
+            fprintf(outputFile, "%sT_%d := %s\n", buildPreTabsString(preTabs), index++, token2);
             sprintf(token2, "T%d", index-1);
         } else {
             if (strcmp(token2, "NULL") == 0) token2 = 0;
@@ -973,14 +983,14 @@ char *generateConditionExpressionIRCode(TokenPointer *tokenPointer, SymbolPointe
     (*tokenPointer) = (*tokenPointer)->nextPointer;
 
     if (!isValidIdentifier(token1)) {
-        printf("%sT_%d := %s\n", buildPreTabsString(preTabs), index++, token1);
+        fprintf(outputFile, "%sT_%d := %s\n", buildPreTabsString(preTabs), index++, token1);
         sprintf(token1, "T_%d", index-1);
     } else {
         if (strcmp(token1, "NULL") == 0) token1 = 0;
         else sprintf(token1, "%c%d", 'T', getSymbolFromTable(headSymbol, token1)->index);
     }
     if (!isValidIdentifier(token2)) {
-        printf("%sT_%d := %s\n", buildPreTabsString(preTabs), index++, token2);
+        fprintf(outputFile, "%sT_%d := %s\n", buildPreTabsString(preTabs), index++, token2);
         sprintf(token2, "T_%d", index-1);
     } else {
         if (strcmp(token2, "NULL") == 0) token2 = 0;
@@ -1318,7 +1328,7 @@ void checkComplexExpression(TokenPointer *tokenPointer, SymbolPointer *headSymbo
                         hasError = 1;
                     }
                 } else {
-                    printf("Invalid math expression was found at the end of the file! Needed a semicolon...\n");
+                    fprintf(outputFile, "Invalid math expression was found at the end of the file! Needed a semicolon...\n");
                     hasError = 1;
                     exit(1);
                 }
@@ -1454,7 +1464,7 @@ void checkComplexExpression(TokenPointer *tokenPointer, SymbolPointer *headSymbo
                         hasError = 1;
                     }
                 } else {
-                    printf("Invalid math expression was found at the end of the file! Needed a semicolon...\n");
+                    fprintf(outputFile, "Invalid math expression was found at the end of the file! Needed a semicolon...\n");
                     hasError = 1;
                     exit(1);
                 }
@@ -1627,7 +1637,6 @@ int calculateIntParStack(StackNodePointer *topCalculatorNode, TokenPointer *curr
                         }
                     } else {
                         messageError(*currentToken, "Invalid Operator?");
-                        printf("Operator: %s\n", operation);
                         skipToToken(currentToken, ";");
                         hasError = 1;
                         return 0;
@@ -1688,7 +1697,6 @@ int calculateIntStack(StackNodePointer *topCalculatorNode, TokenPointer *current
                 }
             } else {
                 messageError(*currentToken, "Invalid Operator?");
-                printf("Operator: %s\n", operation);
                 skipToToken(currentToken, ";");
                 hasError = 1;
                 return 0;
@@ -1834,7 +1842,7 @@ char *generateParStackIR(StackNodePointer *topCalculatorNode, SymbolPointer head
         if (isValidIdentifier(token1)) {
             sprintf(token1, "T%d", getSymbolFromTable(headSymbol, token1)->index);
         } else {
-            printf("%sT_%d := %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token1);
+            fprintf(outputFile, "%sT_%d := %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token1);
             sprintf(token1, "T_%d", (*tempIndex)-1);
         }
     }
@@ -1847,12 +1855,12 @@ char *generateParStackIR(StackNodePointer *topCalculatorNode, SymbolPointer head
             if (isValidIdentifier(token2)) {
                 sprintf(token2, "T%d", getSymbolFromTable(headSymbol, token2)->index);
             } else {
-                printf("%sT_%d := %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token2);
+                fprintf(outputFile, "%sT_%d := %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token2);
                 sprintf(token2, "T_%d", (*tempIndex)-1);
             }
         }
 
-        printf("%sT_%d := %s %s %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token2, operation, token1);
+        fprintf(outputFile, "%sT_%d := %s %s %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token2, operation, token1);
         sprintf(result, "T_%d", (*tempIndex)-1);
         pushToStack(topCalculatorNode, result);
         return generateParStackIR(topCalculatorNode, headSymbol, tempIndex, preTabs);
@@ -1869,7 +1877,7 @@ char *generateStackIR(StackNodePointer *topCalculatorNode, SymbolPointer headSym
         if (isValidIdentifier(token1)) {
             sprintf(token1, "T%d", getSymbolFromTable(headSymbol, token1)->index);
         } else {
-            printf("%sT_%d := %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token1);
+            fprintf(outputFile, "%sT_%d := %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token1);
             sprintf(token1, "T_%d", (*tempIndex)-1);
         }
     }
@@ -1882,12 +1890,12 @@ char *generateStackIR(StackNodePointer *topCalculatorNode, SymbolPointer headSym
             if (isValidIdentifier(token2)) {
                 sprintf(token2, "T%d", getSymbolFromTable(headSymbol, token2)->index);
             } else {
-                printf("%sT_%d := %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token2);
+                fprintf(outputFile, "%sT_%d := %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token2);
                 sprintf(token2, "T_%d", (*tempIndex)-1);
             }
         }
 
-        printf("%sT_%d := %s %s %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token2, operation, token1);
+        fprintf(outputFile, "%sT_%d := %s %s %s\n", buildPreTabsString(preTabs), (*tempIndex)++, token2, operation, token1);
         sprintf(result, "T_%d", (*tempIndex)-1);
         pushToStack(topCalculatorNode, result);
         return generateStackIR(topCalculatorNode, headSymbol, tempIndex, preTabs);
@@ -1936,12 +1944,12 @@ void checkConditionalExpression(TokenPointer *tokenPointer, SymbolPointer headSy
                         return;
                     } else {
                         unexpectedTokenException(*tokenPointer, "Expected {");
-                        skipToToken(tokenPointer, "{"); // Todo
+                        skipToToken(tokenPointer, "{");
                         hasError = 1;
                     }
                 } else {
                     unexpectedTokenException(*tokenPointer, "Expected (");
-                    skipToToken(tokenPointer, "{"); // Todo
+                    skipToToken(tokenPointer, "{");
                     hasError = 1;
                 }
             } else {
@@ -1955,7 +1963,7 @@ void checkConditionalExpression(TokenPointer *tokenPointer, SymbolPointer headSy
                 return;
             } else {
                 unexpectedTokenException(*tokenPointer, "Expected {");
-                skipToToken(tokenPointer, "{"); // Todo
+                skipToToken(tokenPointer, "{");
                 hasError = 1;
             }
         } else {
@@ -2051,11 +2059,11 @@ int getPrecedence(char *operator) {
 }
 
 void messageError(TokenPointer tokenPointer, char *message) {
-    printf("Error at line %d, %s\n", tokenPointer->lineNumber, message);
+    fprintf(outputFile, "Error at line %d, %s\n", tokenPointer->lineNumber, message);
 }
 
 void unexpectedTokenException(TokenPointer tokenPointer, char *description) {
-    printf("Error at line %d. %s but found %s\n", tokenPointer->lineNumber, description, tokenPointer->text);
+    fprintf(outputFile, "Error at line %d. %s but found %s\n", tokenPointer->lineNumber, description, tokenPointer->text);
 }
 
 void insertSymbolToTable(SymbolPointer *headSymbol, SymbolPointer symbol) {
