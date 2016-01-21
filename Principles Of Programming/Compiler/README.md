@@ -1,4 +1,4 @@
-##Principles Of Programming Project: A Simple C Compiler
+##Principles Of Programming Final Project: <br> A Simple C Compiler
 This is the project that we've (by we, I mean [Mohamad Amin Mohamadi](https://github.com/mohamad-amin) and [Sina Malakouti](https://github.com/sinamalakouti)) done as the final project for the Principles Of Programming course project at first term of my Bs.C at Amirkabir University of Technology. The defenition of the project can be found [Here](https://docs.google.com/document/d/1D-MFa1RVTy0HIkYIVcdTajutvOECovMbussxOr5XAAI/edit)
 
 ###Features
