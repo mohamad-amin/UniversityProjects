@@ -1,0 +1,4 @@
+#16 Bit Adder in Verilog
+This is my code for Logic Circuits midterm project. Here I've implemented a 16 bit [Ripple Carry Adder](https://en.wikipedia.org/wiki/Adder_%28electronics%29#Ripple-carry_adder) as `module Adder1_16bit`using 16 [Full Adders](https://en.wikipedia.org/wiki/Adder_%28electronics%29#Full_adder) and a 16 bit [Carry Lookahead Adder](https://en.wikipedia.org/wiki/Carry-lookahead_adder) as `module Adder2_16bit` and tested them with a testbench as `module Adder16_TB`. You can simulate the adder using the testbench in ModelSim.
+**Here's a picture of the simulation waveform and transcript:**
+![enter image description here](https://github.com/mohamad-amin/UniversityProjects/blob/master/Logic%20Circuits/Midterm%20Project/art/waveform.jpg)
